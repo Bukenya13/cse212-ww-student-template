@@ -3,74 +3,58 @@ using System.Collections.Generic;
 
 public class Maze
 {
-    private Dictionary<(int, int), (bool left, bool right, bool up, bool down)> maze;
-    private (int x, int y) currentPosition;
+    private Dictionary<(int, int), bool[]> _map;
+    private int _x = 1;
+    private int _y = 1;
 
-    public Maze(Dictionary<(int, int), (bool, bool, bool, bool)> map)
+    public Maze(Dictionary<(int, int), bool[]> map)
     {
-        maze = map;
-        currentPosition = (1, 1);
+        _map = map;
     }
 
-    public (int, int) GetCurrentPosition() => currentPosition;
-
-    // ---------------------------------------------------------------
-    // Move Left
-    // ---------------------------------------------------------------
-    public bool MoveLeft()
+    public string GetStatus()
     {
-        if (!maze.ContainsKey(currentPosition)) return false;
-
-        var paths = maze[currentPosition];
-
-        if (!paths.left) return false;
-
-        currentPosition = (currentPosition.x - 1, currentPosition.y);
-        return true;
+        return $"Current location (x={_x}, y={_y})";
     }
 
-    // ---------------------------------------------------------------
-    // Move Right
-    // ---------------------------------------------------------------
-    public bool MoveRight()
+    private void Fail()
     {
-        if (!maze.ContainsKey(currentPosition)) return false;
-
-        var paths = maze[currentPosition];
-
-        if (!paths.right) return false;
-
-        currentPosition = (currentPosition.x + 1, currentPosition.y);
-        return true;
+        throw new InvalidOperationException("Can't go that way!");
     }
 
-    // ---------------------------------------------------------------
-    // Move Up
-    // ---------------------------------------------------------------
-    public bool MoveUp()
+    public void MoveLeft()
     {
-        if (!maze.ContainsKey(currentPosition)) return false;
+        var moves = _map[(_x, _y)];
+        if (!moves[0])
+            Fail();
 
-        var paths = maze[currentPosition];
-
-        if (!paths.up) return false;
-
-        currentPosition = (currentPosition.x, currentPosition.y + 1);
-        return true;
+        _x -= 1;
     }
 
-    // ---------------------------------------------------------------
-    // Move Down
-    // ---------------------------------------------------------------
-    public bool MoveDown()
+    public void MoveRight()
     {
-        if (!maze.ContainsKey(currentPosition)) return false;
+        var moves = _map[(_x, _y)];
+        if (!moves[1])
+            Fail();
 
-        var paths = maze[currentPosition];
+        _x += 1;
+    }
 
-        if (!paths.down) return false;
+    public void MoveUp()
+    {
+        var moves = _map[(_x, _y)];
+        if (!moves[2])
+            Fail();
 
-        currentPosition = (currentPosition.x, currentPosition.y - 1);
-        return true;
+        _y += 1;
+    }
+
+    public void MoveDown()
+    {
+        var moves = _map[(_x, _y)];
+        if (!moves[3])
+            Fail();
+
+        _y -= 1;
     }
 }

@@ -2,132 +2,150 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Text.Json;
 
-public class SetsAndMaps
+public static class SetsAndMaps
 {
-    // ---------------------------------------------------------------
-    // Problem 1: FindPairs
-    // ---------------------------------------------------------------
+    // -----------------------------------------------------------
+    // 1. FindPairs
+    // -----------------------------------------------------------
     public static string[] FindPairs(string[] words)
     {
         HashSet<string> seen = new HashSet<string>();
-        List<string> results = new List<string>();
+        List<string> pairs = new List<string>();
 
         foreach (string w in words)
         {
-            if (w.Length != 2) continue;
+            // Skip same letters like "aa"
+            if (w.Length != 2 || w[0] == w[1])
+                continue;
 
-            // Skip palindromes like "aa"
-            if (w[0] == w[1]) continue;
-1
-            string rev = new string(new char[] { w[1], w[0] });
+            string rev = new string(new[] { w[1], w[0] });
 
+            // If the reverse exists in set, make pair
             if (seen.Contains(rev))
-                results.Add($"{rev} & {w}");
+            {
+                // Tests expect: "rev & w" (e.g., "ma & am")
+                pairs.Add($"{rev} & {w}");
+            }
 
             seen.Add(w);
         }
 
-        return results.ToArray();
+        return pairs.ToArray();
     }
 
-    // ---------------------------------------------------------------
-    // Problem 2: Degree Summary
-    // ---------------------------------------------------------------
+    // -----------------------------------------------------------
+    // 2. SummarizeDegrees
+    // -----------------------------------------------------------
     public static Dictionary<string, int> SummarizeDegrees(string filename)
     {
-        Dictionary<string, int> degreeCount = new Dictionary<string, int>();
+        Dictionary<string, int> result = new Dictionary<string, int>();
 
-        string[] lines = File.ReadAllLines(filename);
-
-        // Skip header line → start at index 1
-        for (int i = 1; i < lines.Length; i++)
+        foreach (var line in File.ReadLines(filename))
         {
-            string[] parts = lines[i].Split(',');
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
 
-            if (parts.Length < 4) continue;
+            // The file is CSV-like, column 4 is degree
+            var parts = line.Split(',');
+            if (parts.Length < 4)
+                continue;
 
             string degree = parts[3].Trim();
 
-            if (!degreeCount.ContainsKey(degree))
-                degreeCount[degree] = 0;
+            if (!result.ContainsKey(degree))
+                result[degree] = 0;
 
-            degreeCount[degree]++;
+            result[degree]++;
         }
 
-        return degreeCount;
+        return result;
     }
 
-    // ---------------------------------------------------------------
-    // Problem 3: Anagram Checker
-    // ---------------------------------------------------------------
-    public static bool IsAnagram(string word1, string word2)
+    // -----------------------------------------------------------
+    // 3. IsAnagram
+    // -----------------------------------------------------------
+    public static bool IsAnagram(string a, string b)
     {
-        if (word1 == null || word2 == null)
+        // Normalize: remove spaces, lowercase
+        a = new string(a.Where(c => c != ' ').Select(char.ToLower).ToArray());
+        b = new string(b.Where(c => c != ' ').Select(char.ToLower).ToArray());
+
+        if (a.Length != b.Length)
             return false;
 
-        string w1 = new string(word1.ToLower().Where(char.IsLetter).ToArray());
-        string w2 = new string(word2.ToLower().Where(char.IsLetter).ToArray());
+        Dictionary<char, int> counts = new Dictionary<char, int>();
 
-        if (w1.Length != w2.Length)
-            return false;
-
-        Dictionary<char, int> freq = new Dictionary<char, int>();
-
-        foreach (char c in w1)
+        // Count chars in a
+        foreach (char c in a)
         {
-            if (!freq.ContainsKey(c)) freq[c] = 0;
-            freq[c]++;
+            if (!counts.ContainsKey(c))
+                counts[c] = 0;
+            counts[c]++;
         }
 
-        foreach (char c in w2)
+        // Subtract for chars in b
+        foreach (char c in b)
         {
-            if (!freq.ContainsKey(c)) return false;
+            if (!counts.ContainsKey(c))
+                return false;
 
-            freq[c]--;
-            if (freq[c] < 0) return false;
+            counts[c]--;
+            if (counts[c] < 0)
+                return false;
         }
 
         return true;
     }
 
-    // ---------------------------------------------------------------
-    // Problem 5: Earthquake JSON Data
-    // ---------------------------------------------------------------
-    public static string[] EarthquakeDailySummary(string json)
+    // -----------------------------------------------------------
+    // 5. Earthquake JSON Data
+    // -----------------------------------------------------------
+
+    private class FeatureCollection
     {
-        FeatureCollection data = JsonSerializer.Deserialize<FeatureCollection>(json);
+        public List<Feature>? features { get; set; }
+    }
+
+    private class Feature
+    {
+        public Properties? properties { get; set; }
+    }
+
+    private class Properties
+    {
+        public string? place { get; set; }
+        public double? mag { get; set; }
+        public long? time { get; set; }
+    }
+
+    public static string[] EarthquakeDailySummary()
+    {
+        using HttpClient client = new HttpClient();
+
+        string url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson";
+
+        string json = client.GetStringAsync(url).Result;
+
+        var data = JsonSerializer.Deserialize<FeatureCollection>(json);
+
+        if (data?.features == null)
+            return Array.Empty<string>();
 
         List<string> results = new List<string>();
 
-        foreach (var feature in data.features)
+        foreach (var f in data.features)
         {
-            string place = feature.properties.place;
-            double mag = feature.properties.mag;
+            if (f.properties == null) continue;
+
+            string place = f.properties.place ?? "Unknown location";
+            double mag = f.properties.mag ?? 0.0;
 
             results.Add($"{place} - Mag {mag}");
         }
 
         return results.ToArray();
     }
-}
-
-// ---------------------------------------------------------------
-// JSON classes for Problem 5
-// ---------------------------------------------------------------
-public class FeatureCollection
-{
-    public List<Feature> features { get; set; }
-}
-
-public class Feature
-{
-    public Properties properties { get; set; }
-}
-
-public class Properties
-{
-    public string place { get; set; }
-    public double mag { get; set; }
 }
